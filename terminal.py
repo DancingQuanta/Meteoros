@@ -395,7 +395,7 @@ if __name__ == "__main__":
 				print("Error: no filename config option found for sensor plugin " + i)
 				raise
 			try:
-				node = sensorConfig.get(i,"port")
+				node = sensorConfig.get(i,"node")
 			except Exception:
 				print("Error: no port config option found for sensor plugin " + i)
 				raise
@@ -449,7 +449,7 @@ if __name__ == "__main__":
 				   add_cr = args.crlf,
 				   raw = raw,
 				   color = (os.name == "posix" and not args.mono),
-				   logfile = args.log,
+				   logfile = logfiledir,
 				   bufsize = args.bufsize)
 	if not args.quiet:
 		term.print_header(nodes, bauds, sys.stderr)
