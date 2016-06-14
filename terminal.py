@@ -102,7 +102,7 @@ class Jimterm:
 				 add_cr = False,
 				 raw = True,
 				 color = True,
-				 logfile = None,
+				 logfiledir = None,
 				 bufsize = 65536):
 
 		self.color = JimtermColor()
@@ -122,28 +122,33 @@ class Jimterm:
 		self.add_cr = add_cr
 		self.raw = raw
 		self.bufsize = bufsize
-		# self.logfile & self.log_write are either None and a do-nothing
+		# self.logfiledir & self.log are either None and a do-nothing
 		# function, or they are the open log file and a function which
 		# writes data to the log:
-		if logfile:
-			self.logfile = open(logfile, "w")
-			self.log_write = lambda s: self.logfile.write(s)
+		if logfiledir:
+			self.logfiledir = logfiledir
 		else:
-			self.logfile = None
-			self.log_write = lambda _: None
+			self.logfiledir = None
 		self.quote_re = None
-
+	
+	def logger(self,dev,data):
+		if self.logfiledir:
+			today = time.strftime("%Y-%m-%d-%H", time.localtime())
+			node = dev.port.replace('/','-')
+			logfile = os.path.join(self.logfiledir, today) +"-" + node
+			with open(logfile, 'a') as f: # Open log file
+					f.write(data)
+					f.flush() # Properly write to disk
+	
 	def print_header(self, nodes, bauds, output = sys.stdout):
 		for (n, (node, baud)) in enumerate(zip(nodes, bauds)):
 			output.write(self.color.code(n)
 						 + node + ", " + str(baud) + " baud"
 						 + self.color.reset + "\n")
-			self.log_write("[%u] = %s, %s baud\n" % (n, node, baud))
 		if sys.stdin.isatty():
 			output.write("^C to exit\n")
 			output.write("----------\n")
 		output.flush()
-		self.log_write("----------\n")
 
 	def start(self):
 		self.alive = True
@@ -217,7 +222,6 @@ class Jimterm:
 
 				if index != self.last_index:
 					self.last_index = index
-					self.log_write("[%u] " % (index,))
 
 				if self.add_cr:
 					if sys.version_info < (3,):
@@ -229,7 +233,7 @@ class Jimterm:
 					data = self.quote_raw(data)
 
 				os.write(sys.stdout.fileno(), data)
-				self.log_write(data.decode("utf-8"))
+				self.logger(serial,data.decode("utf-8"))
 		except Exception as e:
 			self.console.cleanup()
 			sys.stdout.write(color)
@@ -237,11 +241,9 @@ class Jimterm:
 			traceback.print_exc()
 			sys.stdout.write(self.color.reset)
 			sys.stdout.flush()
-			self.log_write("\nKilled with exception: %s" % (e,))
-			if self.logfile:
-				self.logfile.close()
+			self.logger(serial,"\nKilled with exception: %s" % (e,))
 			os._exit(1)
-
+	
 	def writer(self):
 		"""loop and copy console->serial until ^C"""
 		try:
@@ -283,9 +285,6 @@ class Jimterm:
 			self.console.cleanup()
 			sys.stdout.write(self.color.reset)
 			sys.stdout.flush()
-			self.log_write("\nKilled with exception: %s" % (e,))
-			if self.logfile:
-				self.logfile.close()
 			traceback.print_exc()
 			os._exit(1)
 
@@ -318,8 +317,8 @@ class Jimterm:
 		# Cleanup
 		sys.stdout.write(self.color.reset + "\n")
 		self.console.cleanup()
-		if self.logfile:
-			self.logfile.close()
+		if self.logfiledir:
+			self.logfiledir.close()
 		
 if __name__ == "__main__":
 	import argparse
@@ -372,6 +371,7 @@ if __name__ == "__main__":
 				os.makedirs(logfiledir)
 		except:
 			print("Not logging to file!")
+			logfiledir = None
 	else:
 		print "Unable to access config file: settings.cfg"
 	
@@ -449,7 +449,7 @@ if __name__ == "__main__":
 				   add_cr = args.crlf,
 				   raw = raw,
 				   color = (os.name == "posix" and not args.mono),
-				   logfile = logfiledir,
+				   logfiledir = logfiledir,
 				   bufsize = args.bufsize)
 	if not args.quiet:
 		term.print_header(nodes, bauds, sys.stderr)
