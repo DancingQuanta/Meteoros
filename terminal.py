@@ -112,11 +112,10 @@ class Jimterm:
 					f.write(data)
 					f.flush() # Properly write to disk
 	
-	def print_header(self, nodes, bauds, output = sys.stdout):
-		for (n, (node, baud)) in enumerate(zip(nodes, bauds)):
+	def print_header(self, nodes, output = sys.stdout):
+		for (n, (node,)) in enumerate(zip(nodes)):
 			output.write(self.color.code(n)
-						 + node + ", " + str(baud) + " baud"
-						 + self.color.reset + "\n")
+						 + node + self.color.reset + "\n")
 		if sys.stdin.isatty():
 			output.write("^C to exit\n")
 			output.write("----------\n")
@@ -382,6 +381,6 @@ if __name__ == "__main__":
 				   logfiledir = logfiledir,
 				   bufsize = args.bufsize)
 	if not args.quiet:
-		term.print_header(nodes, bauds, sys.stderr)
+		term.print_header(nodes, sys.stderr)
 
 	term.run()
