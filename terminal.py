@@ -16,7 +16,6 @@
 
 import sys
 import os
-import serial
 import threading
 import traceback
 import time
@@ -29,21 +28,6 @@ import inspect
 from sensors import sensor
 from outputs import output
 import select, errno
-
-class MySerial(serial.Serial):
-	def nonblocking_read(self, size=1):
-		[r, w, x] = select.select([self.fd], [], [self.fd], self._timeout)
-		if r:
-			try:
-				return os.read(self.fd, size)
-			except OSError as e:
-				if e.errno == errno.EAGAIN:
-					return None
-				raise
-		elif x:
-			raise SerialException("exception (device disconnected?)")
-		else:
-			return None # timeout
 
 class JimtermColor(object):
 	def __init__(self):
@@ -70,10 +54,7 @@ class Jimterm:
 	"""Normal interactive terminal"""
 
 	def __init__(self,
-				 serials,
-				 suppress_write_bytes = None,
-				 suppress_read_firstnull = True,
-				 transmit_all = False,
+				 sensors,
 				 add_cr = False,
 				 raw = True,
 				 color = True,
@@ -82,18 +63,15 @@ class Jimterm:
 
 		self.color = JimtermColor()
 		if color:
-			self.color.setup(len(serials))
+			self.color.setup(len(sensors))
 
-		self.serials = serials
-		self.suppress_write_bytes = suppress_write_bytes
-		self.suppress_read_firstnull = suppress_read_firstnull
+		self.sensors = sensors
 		self.last_color = ""
 		# The last index for which we were outputting (kept around to
 		# track when we should make a note of it changing, as with
 		# self.last_color):
 		self.last_index = None
 		self.threads = []
-		self.transmit_all = transmit_all
 		self.add_cr = add_cr
 		self.raw = raw
 		self.bufsize = bufsize
@@ -105,15 +83,6 @@ class Jimterm:
 		else:
 			self.logfiledir = None
 		self.quote_re = None
-	
-	def logger(self,dev,data):
-		if self.logfiledir:
-			today = time.strftime("%Y-%m-%d-%H", time.localtime())
-			node = dev.port.replace('/','-')
-			logfile = os.path.join(self.logfiledir, today) +"-" + node
-			with open(logfile, 'a') as f: # Open log file
-					f.write(data)
-					f.flush() # Properly write to disk
 	
 	def print_header(self, nodes, output = sys.stdout):
 		for (n, (node,)) in enumerate(zip(nodes)):
@@ -127,23 +96,12 @@ class Jimterm:
 	def start(self):
 		self.alive = True
 
-<<<<<<< HEAD
-		# Set up console
-		self.console = Console(self.bufsize)
-
-		# serial->console, all devices
-		for (n, serial) in enumerate(self.serials):
-=======
 		# sensor data->console, all devices
 		for (n, serial) in enumerate(self.sensors):
->>>>>>> 8e51ce3... Removed Console class and its instances because the class is not needed and is blocking the keyboard from interrupting the script.
 			self.threads.append(threading.Thread(
 				target = self.reader,
 				args = (serial, self.color.code(n), n)
 				))
-
-		# console->serial
-		self.threads.append(threading.Thread(target = self.writer))
 
 		# start all threads
 		for thread in self.threads:
@@ -182,30 +140,34 @@ class Jimterm:
 					f.write(data)
 					f.flush() # Properly write to disk
 					
-	def reader(self, serial, color, index):
-		"""Loop and copy serial->console.  'serial' is the serial device,
+	def reader(self, sensor, color, index):
+		"""Loop and copy sensor->console.  'sensor' is the sensor device,
 		'color' is the string for the current color, 'index' is the current
-		device index corresponding to 'serial'."""
-		first = True
-		try:
-			if (sys.version_info < (3,)):
-				null = '\x00'
-			else:
-				null = b'\x00'
-			while self.alive:
-				data = serial.nonblocking_read(self.bufsize)
-				if data is None:
-					continue
-				if not len(data):
-					raise Exception("read returned EOF")
+		device index corresponding to 'sensor'."""
 
-				# don't print a NULL if it's the first character we
-				# read.  This hides startup/port-opening glitches with
-				# some serial devices.
-				if self.suppress_read_firstnull and first and data[0] == null:
-					first = False
-					data = data[1:]
-				first = False
+		# Get details of the sensor and add to dict
+		dataDict = {}
+		dataDict["unit"] = sensor.valUnit
+		dataDict["symbol"] = sensor.valSymbol
+		dataDict["name"] = sensor.valName
+		dataDict["sensor"] = sensor.sensorName
+		try:
+			while self.alive:
+				if (curTime-lastUpdated)>delayTime:
+					lastUpdated = curTime
+					data = []
+					#Collect the data from a sensor
+					val = sensor.getVal()
+					if val==None: #this means it has no data to upload.
+						continue
+					dataDict["value"] = sensor.getVal()
+					working = True
+					for i in outputPlugins:
+						working = working and sensor.outputData(dataDict)
+					if working:
+						print "Uploaded successfully"
+					else:
+						print "Failed to upload"
 
 				if color != self.last_color:
 					self.last_color = color
@@ -224,72 +186,20 @@ class Jimterm:
 					# data = self.quote_raw(data)
 
 				os.write(sys.stdout.fileno(), data)
-				self.logger(serial,data.decode("utf-8"))
 		except Exception as e:
 			sys.stdout.write(color)
 			sys.stdout.flush()
 			traceback.print_exc()
 			sys.stdout.write(self.color.reset)
 			sys.stdout.flush()
-			self.logger(serial,"\nKilled with exception: %s" % (e,))
-			os._exit(1)
-	
-	def writer(self):
-		"""loop and copy console->serial until ^C"""
-		try:
-			if (sys.version_info < (3,)):
-				ctrlc = '\x03'
-			else:
-				ctrlc = b'\x03'
-			while self.alive:
-				try:
-					c = self.console.getkey()
-				except KeyboardInterrupt:
-					self.stop()
-					return
-				if c is None:
-					# No input, try again.
-					continue
-				elif self.console.tty and ctrlc in c:
-					# Try to catch ^C that didn't trigger KeyboardInterrupt
-					self.stop()
-					return
-				elif c == '':
-					# Probably EOF on input.  Wait a tiny bit so we can
-					# flush the remaining input, then stop.
-					time.sleep(0.25)
-					self.stop()
-					return
-				else:
-					# Remove bytes we don't want to send
-					if self.suppress_write_bytes is not None:
-						c = c.translate(None, self.suppress_write_bytes)
-
-					# Send character
-					if self.transmit_all:
-						for serial in self.serials:
-							serial.write(c)
-					else:
-						self.serials[0].write(c)
-		except Exception as e:
-			self.console.cleanup()
-			sys.stdout.write(self.color.reset)
-			sys.stdout.flush()
-			traceback.print_exc()
 			os._exit(1)
 
 	def run(self):
-		# Set all serial port timeouts to 0.1 sec
+		# Set all sensor port timeouts to 0.1 sec
 		saved_timeouts = []
-		for serial in self.serials:
-			saved_timeouts.append(serial.timeout)
-			serial.timeout = 0.1
-
-		# Work around https://sourceforge.net/p/pyserial/bugs/151/
-		saved_writeTimeouts = []
-		for serial in self.serials:
-			saved_writeTimeouts.append(serial.writeTimeout)
-			serial.writeTimeout = 1000000
+		for sensor in self.sensors:
+			saved_timeouts.append(sensor.timeout)
+			sensor.timeout = 0.1
 
 		# Handle SIGINT gracefully
 		signal.signal(signal.SIGINT, lambda *args: self.stop())
@@ -298,11 +208,9 @@ class Jimterm:
 		self.start()
 		self.join()
 
-		# Restore serial port timeouts
-		for (serial, saved) in zip(self.serials, saved_timeouts):
-			serial.timeout = saved
-		for (serial, saved) in zip(self.serials, saved_writeTimeouts):
-			serial.writeTimeout = saved
+		# Restore sensor port timeouts
+		for (sensor, saved) in zip(self.sensors, saved_timeouts):
+			sensor.timeout = saved
 
 		# Cleanup
 		sys.stdout.write(self.color.reset + "\n")
@@ -312,10 +220,9 @@ if __name__ == "__main__":
 	import re
 
 	formatter = argparse.ArgumentDefaultsHelpFormatter
-	description = ("Simple serial terminal that supports multiple devices.  "
-				   "If more than one device is specified, device output is "
-				   "shown in varying colors.  All input goes to the "
-				   "first device.")
+	description = ("Based on AirPi and terminal.py the program "
+				         "logs data from connected sensors."
+				   "The outputs are shown in varying colors.")
 	parser = argparse.ArgumentParser(description = description,
 									 formatter_class = formatter)
 
@@ -324,9 +231,6 @@ if __name__ == "__main__":
 
 	parser.add_argument("--crlf", "-c", action="store_true",
 						help="Add CR before incoming LF")
-	parser.add_argument("--all", "-a", action="store_true",
-						help="Send keystrokes to all devices, not just "
-						"the first one")
 	parser.add_argument("--mono", "-m", action="store_true",
 						help="Don't use colors in output")
 	parser.add_argument("--bufsize", "-z", metavar="SIZE", type=int,
@@ -367,13 +271,17 @@ if __name__ == "__main__":
 		print "Unable to access config file: sensors.cfg"
 		exit(1)
 		
+	# Load sensor configuration
+	def get_subclasses(mod,cls):
+		for name, obj in inspect.getmembers(mod):
+			if hasattr(obj, "__bases__") and cls in obj.__bases__:
+				return obj
+		
 	sensorConfig = ConfigParser.SafeConfigParser()
 	sensorConfig.read('sensors.cfg')
 	sensorNames = sensorConfig.sections()
 
-	devs = []
-	nodes = []
-	bauds = []
+	sensorPlugins = []
 	for i in sensorNames:
 		try:	
 			try:
@@ -382,63 +290,62 @@ if __name__ == "__main__":
 				print("Error: no filename config option found for sensor plugin " + i)
 				raise
 			try:
-				node = sensorConfig.get(i,"node")
-			except Exception:
-				print("Error: no port config option found for sensor plugin " + i)
-				raise
-			try:
-				baud = sensorConfig.get(i,"baud")
-			except Exception:
-				print("Error: no baudrate config option found for sensor plugin " + i)
-				raise
-			try:
-				rtscts = sensorConfig.get(i,"rtscts")
-			except Exception:
-				print("Error: no rtscts config option found for sensor plugin " + i)
-				raise
-			try:
-				xonxoff = sensorConfig.get(i,"xonxoff")
-			except Exception:
-				print("Error: no xonxoff config option found for sensor plugin " + i)
-				raise
-			try:
-				dsrdtr = sensorConfig.get(i,"dsrdtr")
-			except Exception:
-				print("Error: no dsrdtr config option found for sensor plugin " + i)
-				raise
-			try:
 				enabled = sensorConfig.getboolean(i,"enabled")
 			except Exception:
 				enabled = True
-			if node in nodes:
-				sys.stderr.write("error: %s specified more than once\n" % node)
-				raise SystemExit(1)
-			try:
-				dev = MySerial(
-					node,
-					baud,
-					xonxoff = xonxoff,
-					rtscts = rtscts,
-					dsrdtr = dsrdtr
-				)
-			except serial.serialutil.SerialException:
-				sys.stderr.write("error opening %s\n" % node)
-				raise SystemExit(1)
-			nodes.append(node)
-			bauds.append(baud)
-			devs.append(dev)
+
+			#if enabled, load the plugin
+			if enabled:
+				try:
+					mod = __import__('sensors.'+filename,fromlist=['a']) #Why does this work?
+				except Exception:
+					print("Error: could not import sensor module " + filename)
+					raise
+
+				try:	
+					sensorClass = get_subclasses(mod,sensor.Sensor)
+					if sensorClass == None:
+						raise AttributeError
+				except Exception:
+					print("Error: could not find a subclass of sensor.Sensor in module " + filename)
+					raise
+
+				try:	
+					reqd = sensorClass.requiredData
+				except Exception:
+					reqd =  []
+				try:
+					opt = sensorClass.optionalData
+				except Exception:
+					opt = []
+
+				pluginData = {}
+
+				class MissingField(Exception): pass
+							
+				for requiredField in reqd:
+					if sensorConfig.has_option(i,requiredField):
+						pluginData[requiredField]=sensorConfig.get(i,requiredField)
+					else:
+						print "Error: Missing required field '" + requiredField + "' for sensor plugin " + i
+						raise MissingField
+				for optionalField in opt:
+					if sensorConfig.has_option(i,optionalField):
+						pluginData[optionalField]=sensorConfig.get(i,optionalField)
+				instClass = sensorClass(pluginData)
+				sensorPlugins.append(instClass)
+				print ("Success: Loaded sensor plugin " + i)
 		except Exception as e: #add specific exception for missing module
 			print("Error: Did not import sensor plugin " + i )
 			raise e
 
-	term = Jimterm(devs,
-				   transmit_all = args.all,
+	term = Jimterm(sensorPlugins,
 				   add_cr = args.crlf,
 				   raw = raw,
 				   color = (os.name == "posix" and not args.mono),
 				   logfiledir = logfiledir,
 				   bufsize = args.bufsize)
 	if not args.quiet:
-		term.print_header(nodes, sys.stderr)
+		term.print_header(sensorNames, sys.stderr)
 
 	term.run()
