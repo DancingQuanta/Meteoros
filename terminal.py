@@ -24,81 +24,51 @@ import signal
 import fcntl
 import string
 import re
+import ConfigParser
 
-# Need OS-specific method for getting keyboard input.
-if os.name == 'nt':
-    import msvcrt
-    class Console:
-        def __init__(self, bufsize = 1):
-            # Buffer size > 1 not supported on Windows
-            self.tty = True
-        def cleanup(self):
-            pass
-        def getkey(self):
-            start = time.time()
-            while True:
-                z = msvcrt.getch()
-                if z == '\0' or z == '\xe0': # function keys
-                    msvcrt.getch()
-                else:
-                    if z == '\r':
-                        return '\n'
-                    return z
-                if (time.time() - start) > 0.1:
-                    return None
+import termios, select, errno
+class Console:
+	def __init__(self, bufsize = 65536):
+		self.bufsize = bufsize
+		self.fd = sys.stdin.fileno()
+		if os.isatty(self.fd):
+			self.tty = True
+			self.old = termios.tcgetattr(self.fd)
+			tc = termios.tcgetattr(self.fd)
+			tc[3] = tc[3] & ~termios.ICANON & ~termios.ECHO & ~termios.ISIG
+			tc[6][termios.VMIN] = 1
+			tc[6][termios.VTIME] = 0
+			termios.tcsetattr(self.fd, termios.TCSANOW, tc)
+		else:
+			self.tty = False
+	def cleanup(self):
+		if self.tty:
+			termios.tcsetattr(self.fd, termios.TCSAFLUSH, self.old)
+	def getkey(self):
+		# Return -1 if we don't get input in 0.1 seconds, so that
+		# the main code can check the "alive" flag and respond to SIGINT.
+		[r, w, x] = select.select([self.fd], [], [self.fd], 0.1)
+		if r:
+			return os.read(self.fd, self.bufsize)
+		elif x:
+			return ''
+		else:
+			return None
 
-    class MySerial(serial.Serial):
-        def nonblocking_read(self, size=1):
-            # Buffer size > 1 not supported on Windows
-            return self.read(1)
-elif os.name == 'posix':
-    import termios, select, errno
-    class Console:
-        def __init__(self, bufsize = 65536):
-            self.bufsize = bufsize
-            self.fd = sys.stdin.fileno()
-            if os.isatty(self.fd):
-                self.tty = True
-                self.old = termios.tcgetattr(self.fd)
-                tc = termios.tcgetattr(self.fd)
-                tc[3] = tc[3] & ~termios.ICANON & ~termios.ECHO & ~termios.ISIG
-                tc[6][termios.VMIN] = 1
-                tc[6][termios.VTIME] = 0
-                termios.tcsetattr(self.fd, termios.TCSANOW, tc)
-            else:
-                self.tty = False
-        def cleanup(self):
-            if self.tty:
-                termios.tcsetattr(self.fd, termios.TCSAFLUSH, self.old)
-        def getkey(self):
-            # Return -1 if we don't get input in 0.1 seconds, so that
-            # the main code can check the "alive" flag and respond to SIGINT.
-            [r, w, x] = select.select([self.fd], [], [self.fd], 0.1)
-            if r:
-                return os.read(self.fd, self.bufsize)
-            elif x:
-                return ''
-            else:
-                return None
-
-    class MySerial(serial.Serial):
-        def nonblocking_read(self, size=1):
-            [r, w, x] = select.select([self.fd], [], [self.fd], self._timeout)
-            if r:
-                try:
-                    return os.read(self.fd, size)
-                except OSError as e:
-                    if e.errno == errno.EAGAIN:
-                        return None
-                    raise
-            elif x:
-                raise SerialException("exception (device disconnected?)")
-            else:
-                return None # timeout
-
-else:
-    raise ("Sorry, no terminal implementation for your platform (%s) "
-           "available." % sys.platform)
+class MySerial(serial.Serial):
+	def nonblocking_read(self, size=1):
+		[r, w, x] = select.select([self.fd], [], [self.fd], self._timeout)
+		if r:
+			try:
+				return os.read(self.fd, size)
+			except OSError as e:
+				if e.errno == errno.EAGAIN:
+					return None
+				raise
+		elif x:
+			raise SerialException("exception (device disconnected?)")
+		else:
+			return None # timeout
 
 class JimtermColor(object):
     def __init__(self):
