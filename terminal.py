@@ -97,10 +97,10 @@ class Jimterm:
 		self.alive = True
 
 		# sensor data->console, all devices
-		for (n, serial) in enumerate(self.sensors):
+		for (n, sensor) in enumerate(self.sensors):
 			self.threads.append(threading.Thread(
 				target = self.reader,
-				args = (serial, self.color.code(n), n)
+				args = (sensor, self.color.code(n), n)
 				))
 
 		# start all threads
@@ -147,6 +147,7 @@ class Jimterm:
 
 		try:
 			while self.alive:
+				print("Asking")
 				data = sensor.getVal()
 				if data==None: #this means it has no data to upload.
 					continue
