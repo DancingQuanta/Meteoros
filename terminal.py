@@ -25,35 +25,10 @@ import fcntl
 import string
 import re
 import ConfigParser
-
-import termios, select, errno
-class Console:
-	def __init__(self, bufsize = 65536):
-		self.bufsize = bufsize
-		self.fd = sys.stdin.fileno()
-		if os.isatty(self.fd):
-			self.tty = True
-			self.old = termios.tcgetattr(self.fd)
-			tc = termios.tcgetattr(self.fd)
-			tc[3] = tc[3] & ~termios.ICANON & ~termios.ECHO & ~termios.ISIG
-			tc[6][termios.VMIN] = 1
-			tc[6][termios.VTIME] = 0
-			termios.tcsetattr(self.fd, termios.TCSANOW, tc)
-		else:
-			self.tty = False
-	def cleanup(self):
-		if self.tty:
-			termios.tcsetattr(self.fd, termios.TCSAFLUSH, self.old)
-	def getkey(self):
-		# Return -1 if we don't get input in 0.1 seconds, so that
-		# the main code can check the "alive" flag and respond to SIGINT.
-		[r, w, x] = select.select([self.fd], [], [self.fd], 0.1)
-		if r:
-			return os.read(self.fd, self.bufsize)
-		elif x:
-			return ''
-		else:
-			return None
+import inspect
+from sensors import sensor
+from outputs import output
+import select, errno
 
 class MySerial(serial.Serial):
 	def nonblocking_read(self, size=1):
@@ -153,11 +128,16 @@ class Jimterm:
 	def start(self):
 		self.alive = True
 
+<<<<<<< HEAD
 		# Set up console
 		self.console = Console(self.bufsize)
 
 		# serial->console, all devices
 		for (n, serial) in enumerate(self.serials):
+=======
+		# sensor data->console, all devices
+		for (n, serial) in enumerate(self.sensors):
+>>>>>>> 8e51ce3... Removed Console class and its instances because the class is not needed and is blocking the keyboard from interrupting the script.
 			self.threads.append(threading.Thread(
 				target = self.reader,
 				args = (serial, self.color.code(n), n)
@@ -179,18 +159,30 @@ class Jimterm:
 			while thread.isAlive():
 				thread.join(0.1)
 
-	def quote_raw(self, data):
-		if self.quote_re is None:
-			matcher = '[^%s]' % re.escape(string.printable + "\b")
-			if sys.version_info < (3,):
-				self.quote_re = re.compile(matcher)
-				qf = lambda x: ("\\x%02x" % ord(x.group(0)))
-			else:
-				self.quote_re = re.compile(matcher.encode('ascii'))
-				qf = lambda x: ("\\x%02x" % ord(x.group(0))).encode('ascii')
 			self.quote_func = qf
 		return self.quote_re.sub(self.quote_func, data)
 
+	# def quote_raw(self, data):
+		# if self.quote_re is None:
+			# matcher = '[^%s]' % re.escape(string.printable + "\b")
+			# if sys.version_info < (3,):
+				# self.quote_re = re.compile(matcher)
+				# qf = lambda x: ("\\x%02x" % ord(x.group(0)))
+			# else:
+				# self.quote_re = re.compile(matcher.encode('ascii'))
+				# qf = lambda x: ("\\x%02x" % ord(x.group(0))).encode('ascii')
+			# self.quote_func = qf
+		# return self.quote_re.sub(self.quote_func, data)
+	
+	def logger(self,dev,data):
+		if self.logfiledir:
+			today = time.strftime("%Y-%m-%d-%H", time.localtime())
+			node = dev.port.replace('/','-')
+			logfile = os.path.join(self.logfiledir, today) +"-" + node
+			with open(logfile, 'a') as f: # Open log file
+					f.write(data)
+					f.flush() # Properly write to disk
+					
 	def reader(self, serial, color, index):
 		"""Loop and copy serial->console.  'serial' is the serial device,
 		'color' is the string for the current color, 'index' is the current
@@ -229,13 +221,12 @@ class Jimterm:
 					else:
 						data = data.replace(b'\n', b'\r\n')
 
-				if not self.raw:
-					data = self.quote_raw(data)
+				# if not self.raw:
+					# data = self.quote_raw(data)
 
 				os.write(sys.stdout.fileno(), data)
 				self.logger(serial,data.decode("utf-8"))
 		except Exception as e:
-			self.console.cleanup()
 			sys.stdout.write(color)
 			sys.stdout.flush()
 			traceback.print_exc()
@@ -316,9 +307,6 @@ class Jimterm:
 
 		# Cleanup
 		sys.stdout.write(self.color.reset + "\n")
-		self.console.cleanup()
-		if self.logfiledir:
-			self.logfiledir.close()
 		
 if __name__ == "__main__":
 	import argparse
