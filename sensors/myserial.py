@@ -4,9 +4,19 @@ import serial
 
 class MySerial(sensor.Sensor):
 	requiredData = ["port","baudrate","rtscts",
-		"dsrdtr","xonxoff","timeout","sensorName"]
-	optionalData = ["bufsize"]
+		"dsrdtr","xonxoff","sensorName"]
+	optionalData = ["bufsize","timeout"]
 	def __init__(self,data):
+		# Default settings
+		if "bufsize" in data:
+			self.bufsize = data["bufsize"]
+		else:
+			self.bufsize = 65536
+		if "timeout" in data:
+			self.timeout = int(data["timeout"])
+		else:
+			self.timeout = 0.1
+		class ConfigError(Exception): pass
 		try:
 			self.dev = serial.Serial(
 				port=data["port"],
@@ -17,16 +27,12 @@ class MySerial(sensor.Sensor):
 				xonxoff=data["xonxoff"],
 				rtscts=data["rtscts"],
 				dsrdtr=data["dsrdtr"],
-				timeout=int(data["timeout"]) # Seconds
+				timeout=self.timeout # Seconds
 			)
 		except sensor.sensorutil.SerialException:
 			sys.stderr.write("error opening %s\n" % node)
 			raise SystemExit(1)
-		if "bufsize" in data:
-			self.bufsize = data["bufsize"]
-		else:
-			self.bufsize = 65536 # Default
-		class ConfigError(Exception): pass
+		
 	
 	def nonblocking_read(self, size=1):
 		[r, w, x] = select.select([self.fd], [], [self.fd], self._timeout)
