@@ -145,29 +145,11 @@ class Jimterm:
 		'color' is the string for the current color, 'index' is the current
 		device index corresponding to 'sensor'."""
 
-		# Get details of the sensor and add to dict
-		dataDict = {}
-		dataDict["unit"] = sensor.valUnit
-		dataDict["symbol"] = sensor.valSymbol
-		dataDict["name"] = sensor.valName
-		dataDict["sensor"] = sensor.sensorName
 		try:
 			while self.alive:
-				if (curTime-lastUpdated)>delayTime:
-					lastUpdated = curTime
-					data = []
-					#Collect the data from a sensor
-					val = sensor.getVal()
-					if val==None: #this means it has no data to upload.
-						continue
-					dataDict["value"] = sensor.getVal()
-					working = True
-					for i in outputPlugins:
-						working = working and sensor.outputData(dataDict)
-					if working:
-						print "Uploaded successfully"
-					else:
-						print "Failed to upload"
+				data = sensor.getVal()
+				if data==None: #this means it has no data to upload.
+					continue
 
 				if color != self.last_color:
 					self.last_color = color
@@ -195,22 +177,12 @@ class Jimterm:
 			os._exit(1)
 
 	def run(self):
-		# Set all sensor port timeouts to 0.1 sec
-		saved_timeouts = []
-		for sensor in self.sensors:
-			saved_timeouts.append(sensor.timeout)
-			sensor.timeout = 0.1
-
 		# Handle SIGINT gracefully
 		signal.signal(signal.SIGINT, lambda *args: self.stop())
 
 		# Go
 		self.start()
 		self.join()
-
-		# Restore sensor port timeouts
-		for (sensor, saved) in zip(self.sensors, saved_timeouts):
-			sensor.timeout = saved
 
 		# Cleanup
 		sys.stdout.write(self.color.reset + "\n")
