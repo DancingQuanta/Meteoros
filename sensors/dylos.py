@@ -2,6 +2,7 @@
 import sensor
 from mySerial import mySerial
 import serial
+import datetime as dt
 
 class Dylos(sensor.Sensor):
 	requiredData = ["port","sensorName"]
@@ -33,7 +34,28 @@ class Dylos(sensor.Sensor):
 		except serial.serialutil.SerialException:
 			sys.stderr.write("error opening %s\n" % sensorName)
 			raise SystemExit(1)
-		
+
 	def getVal(self):
-		data = self.dev.nonblocking_read(self.bufsize)
-		return data		
+		self.data = ""
+		self.data = self.dev.nonblocking_read(self.bufsize)
+		if self.data==None:
+			return self.data
+		else:
+			while "\n" not in self.data:
+				self.data = self.data + self.dev.nonblocking_read(self.bufsize)
+			now = dt.datetime.now()
+			data = self.data
+			try:
+				bin_data = [int(x.strip()) for x in data.split(',')]
+			except:
+				#Dylos Error
+				print("Dylos Data: Error - Dylos Bin data")
+				return None
+			if len(bin_data) >= 2:
+				bin_1=bin_data[0]
+				bin_2=bin_data[1]
+			else:
+				bin_1=-9999
+				bin_2=-9999
+			data =  "%s,%s,%s\n" % (now,bin_1,bin_2)
+			return data

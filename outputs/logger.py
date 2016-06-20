@@ -1,19 +1,22 @@
+import sys
 import time
 import os
 import subprocess
 import output
 
 class Logger(output.Output):
+	remoteData = ["remotedir","remoteuser","remotehostname"]
 	requiredData = ["localdir"]
-	optionalData = ["remotedir","remoteuser","remotehostname"]
+	optionalData = remoteData
 	def __init__(self,data):
 
 		self.ld = data["localdir"]
 		# Check if local logging directory exists
 		if not os.path.exists(self.ld):
 			os.makedirs(self.ld)
-		
-		if "remotedir" in data:
+
+		if set(self.remoteData) <= set(data):
+			# Check if remoteData is subset of list of keys of data to ensure all remote settings are available
 			rd = data["remotedir"]
 			ru = data["remoteuser"]
 			rh = data["remotehostname"]
