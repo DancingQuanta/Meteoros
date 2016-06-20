@@ -130,10 +130,10 @@ class Jimterm:
 			# self.quote_func = qf
 		# return self.quote_re.sub(self.quote_func, data)
 	
-	def logger(self,dev,data):
+	def logger(self,sensor,data):
 		if self.logfiledir:
 			today = time.strftime("%Y-%m-%d-%H", time.localtime())
-			node = dev.port.replace('/','-')
+			node = sensor.sensorName
 			logfile = os.path.join(self.logfiledir, today) +"-" + node
 			with open(logfile, 'a') as f: # Open log file
 					f.write(data)
@@ -165,7 +165,7 @@ class Jimterm:
 
 				# if not self.raw:
 					# data = self.quote_raw(data)
-
+				self.logger(sensor,data)
 				os.write(sys.stdout.fileno(), data)
 		except Exception as e:
 			sys.stdout.write(color)
