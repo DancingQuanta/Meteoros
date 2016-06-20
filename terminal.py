@@ -26,6 +26,7 @@ import re
 import ConfigParser
 import inspect
 from sensors import sensor
+from outputs import output
 import select, errno
 
 class JimtermColor(object):
@@ -129,15 +130,6 @@ class Jimterm:
 				# qf = lambda x: ("\\x%02x" % ord(x.group(0))).encode('ascii')
 			# self.quote_func = qf
 		# return self.quote_re.sub(self.quote_func, data)
-	
-	def logger(self,sensor,data):
-		if self.logfiledir:
-			today = time.strftime("%Y-%m-%d-%H", time.localtime())
-			node = sensor.sensorName
-			logfile = os.path.join(self.logfiledir, today) +"-" + node
-			with open(logfile, 'a') as f: # Open log file
-					f.write(data)
-					f.flush() # Properly write to disk
 					
 	def reader(self, sensor, color, index):
 		"""Loop and copy sensor->console.  'sensor' is the sensor device,
@@ -165,7 +157,14 @@ class Jimterm:
 
 				# if not self.raw:
 					# data = self.quote_raw(data)
-				self.logger(sensor,data)
+				
+				# Upload data
+				dataDict = {}
+				dataDict["value"] = data
+				dataDict["sensorName"] = sensor.sensorName
+				for i in outputPlugins:
+					i.outputData(dataDict)
+				
 				os.write(sys.stdout.fileno(), data)
 		except Exception as e:
 			sys.stdout.write(color)
@@ -226,14 +225,6 @@ if __name__ == "__main__":
 	if os.path.isfile("settings.cfg"):
 		mainConfig = ConfigParser.SafeConfigParser()
 		mainConfig.read("settings.cfg")
-		try:
-			logfiledir = mainConfig.get("Main","logfiledir")
-			# Check if local logging directory exists
-			if not os.path.exists(logfiledir):
-				os.makedirs(logfiledir)
-		except:
-			print("Not logging to file!")
-			logfiledir = None
 	else:
 		print "Unable to access config file: settings.cfg"
 	
@@ -309,12 +300,80 @@ if __name__ == "__main__":
 		except Exception as e: #add specific exception for missing module
 			print("Error: Did not import sensor plugin " + i )
 			raise e
+	
+	if not os.path.isfile("outputs.cfg"):
+		print "Unable to access config file: outputs.cfg"
+	outputConfig = ConfigParser.SafeConfigParser()
+	outputConfig.read("outputs.cfg")
+	outputNames = outputConfig.sections()
+	outputPlugins = []
 
+	for i in outputNames:
+		try:	
+			try:
+				filename = outputConfig.get(i,"filename")
+			except Exception:
+				print("Error: no filename config option found for output plugin " + i)
+				raise
+			try:
+				enabled = outputConfig.getboolean(i,"enabled")
+			except Exception:
+				enabled = True
+
+			#if enabled, load the plugin
+			if enabled:
+				try:
+					mod = __import__('outputs.'+filename,fromlist=['a']) #Why does this work?
+				except Exception:
+					print("Error: could not import output module " + filename)
+					raise
+
+				try:	
+					outputClass = get_subclasses(mod,output.Output)
+					if outputClass == None:
+						raise AttributeError
+				except Exception:
+					print("Error: could not find a subclass of output.Output in module " + filename)
+					raise
+				try:	
+					reqd = outputClass.requiredData
+				except Exception:
+					reqd =  []
+				try:
+					opt = outputClass.optionalData
+				except Exception:
+					opt = []
+				
+				if outputConfig.has_option(i,"async"):
+					async = outputConfig.getbool(i,"async")
+				else:
+					async = False
+				
+				pluginData = {}
+
+				class MissingField(Exception): pass
+							
+				for requiredField in reqd:
+					if outputConfig.has_option(i,requiredField):
+						pluginData[requiredField]=outputConfig.get(i,requiredField)
+					else:
+						print "Error: Missing required field '" + requiredField + "' for output plugin " + i
+						raise MissingField
+				for optionalField in opt:
+					if outputConfig.has_option(i,optionalField):
+						pluginData[optionalField]=outputConfig.get(i,optionalField)
+				instClass = outputClass(pluginData)
+				instClass.async = async
+				outputPlugins.append(instClass)
+				print ("Success: Loaded output plugin " + i)
+		except Exception as e: #add specific exception for missing module
+			print("Error: Did not import output plugin " + i )
+			raise e
+				
 	term = Jimterm(sensorPlugins,
 				   add_cr = args.crlf,
 				   raw = raw,
 				   color = (os.name == "posix" and not args.mono),
-				   logfiledir = logfiledir,
 				   bufsize = args.bufsize)
 	if not args.quiet:
 		term.print_header(sensorNames, sys.stderr)
