@@ -58,6 +58,11 @@ class Logger(output.Output):
         # rsync
         rsync_cmd = 'rsync -arz %s/ %s/' % (ld, remote)
         p = subprocess.Popen(rsync_cmd, shell=True).wait()
+        # If this successful?
+        if p == 0:
+          return True
+        else:
+          return False
 
     def usbBackup(self,ld):
         # Back up to USB
@@ -80,10 +85,10 @@ class Logger(output.Output):
         # Backup
         usbStatus = False
         if self.rd != None and self.raddr != None:
-            self.remoteBackup(self.ld,self.rd,self.raddr)
+            remoteStatus = self.remoteBackup(self.ld,self.rd,self.raddr)
         if self.usbStatus:
             usbStatus = self.usbBackup(self.ld)
-        if usbStatus:
+        if usbStatus or remoteStatus:
             if self.lastdatetime != datetime:
                 cmd = "find %s ! -name '%s' -type f -exec rm -f {} +" % (self.ld,logfile)
                 p = subprocess.Popen(cmd, shell=True).wait()
