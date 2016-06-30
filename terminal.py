@@ -25,35 +25,7 @@ import fcntl
 import string
 import re
 import ConfigParser
-
-import termios, select, errno
-class Console:
-	def __init__(self, bufsize = 65536):
-		self.bufsize = bufsize
-		self.fd = sys.stdin.fileno()
-		if os.isatty(self.fd):
-			self.tty = True
-			self.old = termios.tcgetattr(self.fd)
-			tc = termios.tcgetattr(self.fd)
-			tc[3] = tc[3] & ~termios.ICANON & ~termios.ECHO & ~termios.ISIG
-			tc[6][termios.VMIN] = 1
-			tc[6][termios.VTIME] = 0
-			termios.tcsetattr(self.fd, termios.TCSANOW, tc)
-		else:
-			self.tty = False
-	def cleanup(self):
-		if self.tty:
-			termios.tcsetattr(self.fd, termios.TCSAFLUSH, self.old)
-	def getkey(self):
-		# Return -1 if we don't get input in 0.1 seconds, so that
-		# the main code can check the "alive" flag and respond to SIGINT.
-		[r, w, x] = select.select([self.fd], [], [self.fd], 0.1)
-		if r:
-			return os.read(self.fd, self.bufsize)
-		elif x:
-			return ''
-		else:
-			return None
+import select, errno
 
 class MySerial(serial.Serial):
 	def nonblocking_read(self, size=1):
@@ -153,18 +125,12 @@ class Jimterm:
 	def start(self):
 		self.alive = True
 
-		# Set up console
-		self.console = Console(self.bufsize)
-
 		# serial->console, all devices
 		for (n, serial) in enumerate(self.serials):
 			self.threads.append(threading.Thread(
 				target = self.reader,
 				args = (serial, self.color.code(n), n)
 				))
-
-		# console->serial
-		self.threads.append(threading.Thread(target = self.writer))
 
 		# start all threads
 		for thread in self.threads:
@@ -179,18 +145,30 @@ class Jimterm:
 			while thread.isAlive():
 				thread.join(0.1)
 
-	def quote_raw(self, data):
-		if self.quote_re is None:
-			matcher = '[^%s]' % re.escape(string.printable + "\b")
-			if sys.version_info < (3,):
-				self.quote_re = re.compile(matcher)
-				qf = lambda x: ("\\x%02x" % ord(x.group(0)))
-			else:
-				self.quote_re = re.compile(matcher.encode('ascii'))
-				qf = lambda x: ("\\x%02x" % ord(x.group(0))).encode('ascii')
 			self.quote_func = qf
 		return self.quote_re.sub(self.quote_func, data)
 
+	# def quote_raw(self, data):
+		# if self.quote_re is None:
+			# matcher = '[^%s]' % re.escape(string.printable + "\b")
+			# if sys.version_info < (3,):
+				# self.quote_re = re.compile(matcher)
+				# qf = lambda x: ("\\x%02x" % ord(x.group(0)))
+			# else:
+				# self.quote_re = re.compile(matcher.encode('ascii'))
+				# qf = lambda x: ("\\x%02x" % ord(x.group(0))).encode('ascii')
+			# self.quote_func = qf
+		# return self.quote_re.sub(self.quote_func, data)
+	
+	def logger(self,dev,data):
+		if self.logfiledir:
+			today = time.strftime("%Y-%m-%d-%H", time.localtime())
+			node = dev.port.replace('/','-')
+			logfile = os.path.join(self.logfiledir, today) +"-" + node
+			with open(logfile, 'a') as f: # Open log file
+					f.write(data)
+					f.flush() # Properly write to disk
+					
 	def reader(self, serial, color, index):
 		"""Loop and copy serial->console.  'serial' is the serial device,
 		'color' is the string for the current color, 'index' is the current
@@ -229,13 +207,12 @@ class Jimterm:
 					else:
 						data = data.replace(b'\n', b'\r\n')
 
-				if not self.raw:
-					data = self.quote_raw(data)
+				# if not self.raw:
+					# data = self.quote_raw(data)
 
 				os.write(sys.stdout.fileno(), data)
 				self.logger(serial,data.decode("utf-8"))
 		except Exception as e:
-			self.console.cleanup()
 			sys.stdout.write(color)
 			sys.stdout.flush()
 			traceback.print_exc()
@@ -244,50 +221,6 @@ class Jimterm:
 			self.logger(serial,"\nKilled with exception: %s" % (e,))
 			os._exit(1)
 	
-	def writer(self):
-		"""loop and copy console->serial until ^C"""
-		try:
-			if (sys.version_info < (3,)):
-				ctrlc = '\x03'
-			else:
-				ctrlc = b'\x03'
-			while self.alive:
-				try:
-					c = self.console.getkey()
-				except KeyboardInterrupt:
-					self.stop()
-					return
-				if c is None:
-					# No input, try again.
-					continue
-				elif self.console.tty and ctrlc in c:
-					# Try to catch ^C that didn't trigger KeyboardInterrupt
-					self.stop()
-					return
-				elif c == '':
-					# Probably EOF on input.  Wait a tiny bit so we can
-					# flush the remaining input, then stop.
-					time.sleep(0.25)
-					self.stop()
-					return
-				else:
-					# Remove bytes we don't want to send
-					if self.suppress_write_bytes is not None:
-						c = c.translate(None, self.suppress_write_bytes)
-
-					# Send character
-					if self.transmit_all:
-						for serial in self.serials:
-							serial.write(c)
-					else:
-						self.serials[0].write(c)
-		except Exception as e:
-			self.console.cleanup()
-			sys.stdout.write(self.color.reset)
-			sys.stdout.flush()
-			traceback.print_exc()
-			os._exit(1)
-
 	def run(self):
 		# Set all serial port timeouts to 0.1 sec
 		saved_timeouts = []
@@ -316,9 +249,6 @@ class Jimterm:
 
 		# Cleanup
 		sys.stdout.write(self.color.reset + "\n")
-		self.console.cleanup()
-		if self.logfiledir:
-			self.logfiledir.close()
 		
 if __name__ == "__main__":
 	import argparse
