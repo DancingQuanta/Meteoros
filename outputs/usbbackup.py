@@ -23,9 +23,13 @@ def mounted(mediadir):
             subprocess.Popen(["sudo","mkdir",mountdir])
         if not os.path.ismount(mountdir):
             print("Mounting: " + mountdir)
-            cmd = 'sudo mount -o rw,umash=000 %s %s' % (device,mountdir)
+            cmd = 'sudo mount -o rw, %s %s' % (device,mountdir)
             p = subprocess.Popen(cmd,shell=True).wait
-        return mountdir
+            if p == 0:
+              return mountdir
+            else:
+              print("Failed to mount")
+              return None
 
 def checkusb():
     idPath = '/dev/disk/by-id/'
