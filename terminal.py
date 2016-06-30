@@ -96,10 +96,10 @@ class Jimterm:
 		self.alive = True
 
 		# sensor data->console, all devices
-		for (n, serial) in enumerate(self.sensors):
-		self.threads.append(threading.Thread(
+		for (n, sensor) in enumerate(self.sensors):
+			self.threads.append(threading.Thread(
 				target = self.reader,
-				args = (serial, self.color.code(n), n)
+				args = (sensor, self.color.code(n), n)
 				))
 
 		# start all threads
@@ -115,8 +115,8 @@ class Jimterm:
 			while thread.isAlive():
 				thread.join(0.1)
 
-			self.quote_func = qf
-		return self.quote_re.sub(self.quote_func, data)
+		#	self.quote_func = qf
+		#return self.quote_re.sub(self.quote_func, data)
 
 	# def quote_raw(self, data):
 		# if self.quote_re is None:
