@@ -33,7 +33,7 @@ class Dylos(sensor.Sensor):
 				timeout=self.timeout # Seconds
 			)
 		except serial.serialutil.SerialException:
-			sys.stderr.write("error opening %s\n" % sensorName)
+			sys.stderr.write("error opening %s\n" % self.sensorName)
 			raise SystemExit(1)
 
 	def getVal(self):
