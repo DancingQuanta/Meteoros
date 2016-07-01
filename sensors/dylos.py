@@ -3,6 +3,7 @@ import sensor
 from mySerial import mySerial
 import serial
 import datetime as dt
+import sys
 
 class Dylos(sensor.Sensor):
 	requiredData = ["port","sensorName"]
