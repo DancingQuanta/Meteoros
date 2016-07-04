@@ -12,7 +12,7 @@ def mounted(mediadir):
     # Get a list of usb devices plugged in
     deviceList = checkusb()
     if not deviceList:
-        print("Nothing to see here")
+       # print("Nothing to see here")
         unmount(mediadir)
     else:
         # Mount the first usb device if not mounted already
@@ -23,13 +23,16 @@ def mounted(mediadir):
             subprocess.Popen(["sudo","mkdir",mountdir])
         if not os.path.ismount(mountdir):
             print("Mounting: " + mountdir)
-            cmd = 'sudo mount -o rw, %s %s' % (device,mountdir)
-            p = subprocess.Popen(cmd,shell=True).wait
-            if p == 0:
-              return mountdir
-            else:
-              print("Failed to mount")
-              return None
+            try:
+                cmd = 'sudo mount -o rw,umask=0022,uid=1000,gid=1000 %s %s' % (device,mountdir)
+                subprocess.check_output(cmd,shell=True).wait
+                #cmd = 'sudo chmod 775 %s' % (mountdir)
+                #subprocess.check_output(cmd,shell=True).wait
+            except subprocess.CalledProcessError as e:
+                raise e.output
+                return None
+        return mountdir
+
 
 def checkusb():
     idPath = '/dev/disk/by-id/'
@@ -50,7 +53,7 @@ def main(local,remote):
     # If a USB is plugged in, then rsync the data to USB
     if mount != None:
         print("Backing up to USB")
-        rsync_cmd = 'rsync -arz %s/ %s/' % (local, mount)
+        rsync_cmd = 'rsync -varz %s/ %s/' % (local, mount)
         p = subprocess.Popen(rsync_cmd, shell=True).wait()
         if p == 0:
             print("Backup Success")
