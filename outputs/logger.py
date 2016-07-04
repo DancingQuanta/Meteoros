@@ -60,9 +60,10 @@ class Logger(output.Output):
         p = subprocess.Popen(rsync_cmd, shell=True).wait()
         # If this successful?
         if p == 0:
-          return True
+            return True
         else:
-          return False
+            print("Upload to server failed")
+            return False
 
     def usbBackup(self,ld):
         # Back up to USB
