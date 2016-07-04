@@ -77,7 +77,9 @@ class Logger(output.Output):
         data = dataPoints["value"]
         sensorName = dataPoints["sensorName"]
         datetime = time.strftime("%Y-%m-%d-%H", time.localtime())
-        logfile = os.path.join(self.ld, datetime) + "-" + sensorName
+        filename = datetime + "-" + sensorName
+        dir = self.ld
+        logfile = os.path.join(dir, filename)
         with open(logfile, 'a') as f: # Open log file
             f.write(data)
             f.flush() # Properly write to disk
@@ -90,6 +92,6 @@ class Logger(output.Output):
             usbStatus = self.usbBackup(self.ld)
         if usbStatus or remoteStatus:
             if self.lastdatetime != datetime:
-                cmd = "find %s ! -name '%s' -type f -exec rm -f {} +" % (self.ld,logfile)
+                cmd = "find %s ! -name '%s' -type f -exec rm -f {} +" % (dir,filename)
                 p = subprocess.Popen(cmd, shell=True).wait()
                 self.lastdatetime = datetime
