@@ -89,8 +89,12 @@ class Logger(output.Output):
         usbStatus = False
         if self.rd != None and self.raddr != None:
             remoteStatus = self.remoteBackup(self.ld,self.rd,self.raddr)
+        else:
+            remoteStatus = None
         if self.usbStatus:
             usbStatus = self.usbBackup(self.ld)
+        else:
+            usbStatus = None
         if usbStatus or remoteStatus:
             if self.lastdatetime != datetime:
                 cmd = "find %s ! -name '%s' -type f -exec rm -f {} +" % (dir,filename)
