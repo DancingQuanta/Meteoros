@@ -97,6 +97,7 @@ class Logger(output.Output):
             usbStatus = False
         if usbStatus or remoteStatus:
             if self.lastdatetime != datetime:
+                print("New hour")
                 cmd = "find %s ! -name '%s' -type f -exec rm -f {} +" % (dir,filename)
                 p = subprocess.Popen(cmd, shell=True).wait()
                 self.lastdatetime = datetime
