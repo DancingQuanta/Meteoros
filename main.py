@@ -218,11 +218,11 @@ if __name__ == "__main__":
 		mainConfig = ConfigParser.SafeConfigParser()
 		mainConfig.read("settings.cfg")
 	else:
-		print "Unable to access config file: settings.cfg"
+		print("Unable to access config file: settings.cfg")
 	
 	# Load configuration from various sensors
 	if not os.path.isfile('sensors.cfg'):
-		print "Unable to access config file: sensors.cfg"
+		print("Unable to access config file: sensors.cfg")
 		exit(1)
 		
 	# Load sensor configuration
@@ -281,20 +281,20 @@ if __name__ == "__main__":
 					if sensorConfig.has_option(i,requiredField):
 						pluginData[requiredField]=sensorConfig.get(i,requiredField)
 					else:
-						print "Error: Missing required field '" + requiredField + "' for sensor plugin " + i
+						print("Error: Missing required field '" + requiredField + "' for sensor plugin " + i)
 						raise MissingField
 				for optionalField in opt:
 					if sensorConfig.has_option(i,optionalField):
 						pluginData[optionalField]=sensorConfig.get(i,optionalField)
 				instClass = sensorClass(pluginData)
 				sensorPlugins.append(instClass)
-				print ("Success: Loaded sensor plugin " + i)
+				print("Success: Loaded sensor plugin " + i)
 		except Exception as e: #add specific exception for missing module
 			print("Error: Did not import sensor plugin " + i )
 			raise e
 	
 	if not os.path.isfile("outputs.cfg"):
-		print "Unable to access config file: outputs.cfg"
+		print("Unable to access config file: outputs.cfg")
 	outputConfig = ConfigParser.SafeConfigParser()
 	outputConfig.read("outputs.cfg")
 	outputNames = outputConfig.sections()
@@ -349,7 +349,7 @@ if __name__ == "__main__":
 					if outputConfig.has_option(i,requiredField):
 						pluginData[requiredField]=outputConfig.get(i,requiredField)
 					else:
-						print "Error: Missing required field '" + requiredField + "' for output plugin " + i
+						print("Error: Missing required field '" + requiredField + "' for output plugin " + i)
 						raise MissingField
 				for optionalField in opt:
 					if outputConfig.has_option(i,optionalField):
@@ -357,7 +357,7 @@ if __name__ == "__main__":
 				instClass = outputClass(pluginData)
 				instClass.async = async
 				outputPlugins.append(instClass)
-				print ("Success: Loaded output plugin " + i)
+				print("Success: Loaded output plugin " + i)
 		except Exception as e: #add specific exception for missing module
 			print("Error: Did not import output plugin " + i )
 			raise e
