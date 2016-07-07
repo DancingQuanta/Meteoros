@@ -12,10 +12,10 @@ import threading
 import traceback
 import time
 import signal
-import fcntl
+# import fcntl
 import string
 import re
-import ConfigParser
+import configparser
 import inspect
 from sensors import sensor
 from outputs import output
@@ -215,7 +215,7 @@ if __name__ == "__main__":
 	
 	# Load settings.cfg
 	if os.path.isfile("settings.cfg"):
-		mainConfig = ConfigParser.SafeConfigParser()
+		mainConfig = configparser.SafeConfigParser()
 		mainConfig.read("settings.cfg")
 	else:
 		print("Unable to access config file: settings.cfg")
@@ -231,7 +231,7 @@ if __name__ == "__main__":
 			if hasattr(obj, "__bases__") and cls in obj.__bases__:
 				return obj
 		
-	sensorConfig = ConfigParser.SafeConfigParser()
+	sensorConfig = configparser.SafeConfigParser()
 	sensorConfig.read('sensors.cfg')
 	sensorNames = sensorConfig.sections()
 
@@ -295,7 +295,7 @@ if __name__ == "__main__":
 	
 	if not os.path.isfile("outputs.cfg"):
 		print("Unable to access config file: outputs.cfg")
-	outputConfig = ConfigParser.SafeConfigParser()
+	outputConfig = configparser.SafeConfigParser()
 	outputConfig.read("outputs.cfg")
 	outputNames = outputConfig.sections()
 	outputPlugins = []
