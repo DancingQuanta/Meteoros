@@ -62,7 +62,7 @@ def main(local, remote):
     # If a USB is plugged in, then rsync the data to USB
     if mount is not None:
         print("Backing up to USB")
-        rsync_cmd = 'rsync -varz %s/ %s/' % (local, mount)
+        rsync_cmd = 'rsync -vzrltD %s/ %s/' % (local, mount)
 
         p = subprocess.Popen(rsync_cmd, shell=True).wait()
         if p == 0:
