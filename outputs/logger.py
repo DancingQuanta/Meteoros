@@ -69,6 +69,7 @@ class Logger(output.Output):
         # Back up to USB
         media = "/media"
         status = usbbackup.main(ld,media)
+        return status
 
     def outputData(self,dataPoints):
         """
