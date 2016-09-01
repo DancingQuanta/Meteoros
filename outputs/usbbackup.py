@@ -37,8 +37,8 @@ def mounted(mediadir):
                 returncode = e.returncode
                 raise output
                 return None
-    # Return found mount point
-    return mountdir
+        # Return found mount point
+        return mountdir
 
 
 def checkusb():
