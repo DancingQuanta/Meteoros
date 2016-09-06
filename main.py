@@ -330,6 +330,6 @@ if __name__ == "__main__":
                color=(os.name == "posix" and not args.mono),
                bufsize=args.bufsize)
     if not args.quiet:
-        term.print_header(sensorNames, sys.stderr)
+        app.print_header(sensorNames, sys.stderr)
 
     app.run()
