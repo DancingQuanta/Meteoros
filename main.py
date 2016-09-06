@@ -10,16 +10,11 @@ import sys
 import os
 import threading
 import traceback
-import time
 import signal
-# import fcntl
-import string
-import re
 import configparser
 import inspect
 from sensors import sensor
 from outputs import output
-import select, errno
 
 
 class termColor(object):
@@ -161,7 +156,6 @@ class term:
 
 if __name__ == "__main__":
     import argparse
-    import re
 
     formatter = argparse.ArgumentDefaultsHelpFormatter
     description = ("Based on AirPi and terminal.py the program "
