@@ -151,7 +151,7 @@ class term:
             self.color.setup(len(sensors))
 
         self.sensors = sensors
-        self.outptus = outputs
+        self.outputs = outputs
         self.last_color = ""
         # The last index for which we were outputting (kept around to
         # track when we should make a note of it changing, as with
