@@ -16,7 +16,7 @@ class mySerial(serial.Serial):
                 if e.errno == errno.EAGAIN:
                     return None
                     raise
-        eli:
+        elif x:
             raise SerialException("exception (device disconnected?)")
         else:
             return None  # timeout
