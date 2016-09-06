@@ -30,11 +30,11 @@ def load_plugins(config, type):
         exit(1)
 
     # Get directory of running script
-    cwd = os.path.abs(os.path.dirname(__file__))
+    cwd = os.path.abspath(os.path.dirname(__file__))
 
     # Get directory of type plugins
-    type_path = os.path.dirname(type.__file__)
-    type_path = relpath(type_path, cwd)
+    type_path = os.path.dirname(inspect.getfile(type))
+    type_path = os.path.relpath(type_path, cwd)
 
     plugin_config = configparser.SafeConfigParser()
     plugin_config.read(config)
