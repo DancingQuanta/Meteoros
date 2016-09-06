@@ -31,7 +31,7 @@ class Dylos(sensor.Sensor):
                        "stopbits": serial.STOPBITS_ONE,
                        "xonxoff": False,
                        "rtscts": False,
-                       "dsrdtr": False
+                       "dsrdtr": False,
                        "timeout": self.timeout}  # Seconds
 
         try:
