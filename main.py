@@ -107,7 +107,7 @@ def load_plugins(config, type):
         except Exception as e:  # Add specific exception for missing module
             print("Error: Did not import %s plugin %s" % (type.__name__, i))
             raise e
-        return plugins, names
+    return plugins, names
 
 
 class termColor(object):
@@ -280,7 +280,6 @@ if __name__ == "__main__":
 
     # Load sensor plugins
     sensorPlugins, sensorNames = load_plugins("sensors.cfg", Sensor)
-    print(sensorPlugins)
 
     # Load output plugins
     outputPlugins, outputNames = load_plugins("outputs.cfg", Output)
