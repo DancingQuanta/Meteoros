@@ -5,28 +5,32 @@ import subprocess
 import output
 import usbbackup
 
+
 class Logger(output.Output):
     usbData = ["usb"]
-    remoteData = ["remotedir","remoteuser","remotehostname"]
+    remoteData = ["remotedir", "remoteuser", "remotehostname"]
     requiredData = ["localdir"]
     optionalData = remoteData + usbData
-    def __init__(self,data):
 
+    def __init__(self, data):
         self.ld = data["localdir"]
+
         # Check if local logging directory exists
         if not os.path.exists(self.ld):
             os.makedirs(self.ld)
         # Check if remoteBackup needs to be enabled
         if set(self.remoteData) <= set(data):
-            # Check if remoteData is subset of list of keys of data to ensure all remote settings are available
+            # Check if remoteData is subset of list of keys of data
+            # to ensure all remote settings are available
             rd = data["remotedir"]
             ru = data["remoteuser"]
             rh = data["remotehostname"]
-            #Remote address
+
+            # Remote address
             raddr = "%s@%s" % (ru, rh)
             # Ensure that remote address exists
             # Create remote directory if does not exist
-            mkdir_cmd = 'ssh %s "mkdir -p %s"' % (raddr,rd)
+            mkdir_cmd = 'ssh %s "mkdir -p %s"' % (raddr, rd)
             p = subprocess.Popen(mkdir_cmd, shell=True).wait()
             self.rd = rd
             self.raddr = raddr
@@ -48,7 +52,7 @@ class Logger(output.Output):
         # Get datetime to init the variable
         self.lastdatetime = time.strftime("%Y-%m-%d-%H", time.localtime())
 
-    def remoteBackup(self,ld,rd,raddr):
+    def remoteBackup(self, ld, rd, raddr):
         # local dir, remote dir and remote address
         # Backup data to server
 
@@ -65,13 +69,13 @@ class Logger(output.Output):
             print("Upload to server failed")
             return False
 
-    def usbBackup(self,ld):
+    def usbBackup(self, ld):
         # Back up to USB
         media = "/media"
-        status = usbbackup.main(ld,media)
+        status = usbbackup.main(ld, media)
         return status
 
-    def outputData(self,dataPoints):
+    def outputData(self, dataPoints):
         """
         The data comes in as a dictionary
         """
@@ -82,14 +86,14 @@ class Logger(output.Output):
         filename = datetime + "-" + sensorName
         dir = self.ld
         logfile = os.path.join(dir, filename)
-        with open(logfile, 'a') as f: # Open log file
+        with open(logfile, 'a') as f:  # Open log file
             f.write(data)
-            f.flush() # Properly write to disk
+            f.flush()  # Properly write to disk
 
         # Backup
         usbStatus = False
-        if self.rd != None and self.raddr != None:
-            remoteStatus = self.remoteBackup(self.ld,self.rd,self.raddr)
+        if self.rd is None and self.raddr is None:
+            remoteStatus = self.remoteBackup(self.ld, self.rd, self.raddr)
         else:
             remoteStatus = False
         if self.usbStatus:
@@ -99,6 +103,6 @@ class Logger(output.Output):
         if usbStatus or remoteStatus:
             if self.lastdatetime != datetime:
                 print("New hour")
-                cmd = "find %s ! -name '%s' -type f -exec rm -f {} +" % (dir,filename)
+                cmd = "find %s ! -name '%s' -type f -exec rm -f {} +" % (dir, filename)
                 p = subprocess.Popen(cmd, shell=True).wait()
                 self.lastdatetime = datetime
