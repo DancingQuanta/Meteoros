@@ -105,21 +105,6 @@ class term:
             while thread.isAlive():
                 thread.join(0.1)
 
-        #   self.quote_func = qf
-        #return self.quote_re.sub(self.quote_func, data)
-
-    # def quote_raw(self, data):
-        # if self.quote_re is None:
-            # matcher = '[^%s]' % re.escape(string.printable + "\b")
-            # if sys.version_info < (3,):
-                # self.quote_re = re.compile(matcher)
-                # qf = lambda x: ("\\x%02x" % ord(x.group(0)))
-            # else:
-                # self.quote_re = re.compile(matcher.encode('ascii'))
-                # qf = lambda x: ("\\x%02x" % ord(x.group(0))).encode('ascii')
-            # self.quote_func = qf
-        # return self.quote_re.sub(self.quote_func, data)
-
     def reader(self, sensor, color, index):
         """Loop and copy sensor->console.  'sensor' is the sensor device,
         'color' is the string for the current color, 'index' is the current
@@ -195,20 +180,7 @@ if __name__ == "__main__":
     parser.add_argument("--bufsize", "-z", metavar="SIZE", type=int,
                         help="Buffer size for reads and writes", default=65536)
 
-    group = parser.add_mutually_exclusive_group(required=False)
-    group.add_argument("--raw", "-r", action="store_true",
-                       default=argparse.SUPPRESS,
-                       help="Output characters directly "
-                       "(default, if stdout is not a tty)")
-    group.add_argument("--no-raw", "-R", action="store_true",
-                       default=argparse.SUPPRESS,
-                       help="Quote unprintable characters "
-                       "(default, if stdout is a tty)")
-
     args = parser.parse_args()
-
-    piped = not sys.stdout.isatty()
-    raw = "raw" in args or (piped and "no_raw" not in args)
 
     # Load settings.cfg
     if os.path.isfile("settings.cfg"):
@@ -361,7 +333,6 @@ if __name__ == "__main__":
 
     app = term(sensorPlugins,
                add_cr=args.crlf,
-               raw=raw,
                color=(os.name == "posix" and not args.mono),
                bufsize=args.bufsize)
     if not args.quiet:
