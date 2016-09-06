@@ -29,6 +29,13 @@ def load_plugins(config, type):
         print("Unable to access config file: %s" % (config))
         exit(1)
 
+    # Get directory of running script
+    cwd = os.path.abs(os.path.dirname(__file__))
+
+    # Get directory of type plugins
+    type_path = os.path.dirname(type.__file__)
+    type_path = relpath(type_path, cwd)
+
     plugin_config = configparser.SafeConfigParser()
     plugin_config.read(config)
     names = plugin_config.sections()
@@ -51,7 +58,7 @@ def load_plugins(config, type):
             # If enabled, load the plugin
             if enabled:
                 try:
-                    path = type.__dir__ + '.' + filename
+                    path = type_path + '.' + filename
                     mod = __import__(path, fromlist=['a'])  # Why does this work?
                 except Exception:
                     msg = ("Error: could not import %s module "
