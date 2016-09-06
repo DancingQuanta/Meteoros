@@ -163,14 +163,12 @@ class term:
         self.bufsize = bufsize
         self.quote_re = None
 
-    def print_header(self, nodes, output=sys.stdout):
+    def print_header(self, nodes):
         for (n, (node,)) in enumerate(zip(nodes)):
-            output.write(self.color.code(n)
-                         + node + self.color.reset + "\n")
+            print(self.color.codes[n] + node + self.color.reset + "\n")
         if sys.stdin.isatty():
-            output.write("^C to exit\n")
-            output.write("----------\n")
-        output.flush()
+            print("^C to exit\n")
+            print("----------\n")
 
     def start(self):
         self.alive = True
@@ -208,16 +206,9 @@ class term:
 
                 if color != self.last_color:
                     self.last_color = color
-                    os.write(sys.stdout.fileno(), color.encode("utf-8"))
 
                 if index != self.last_index:
                     self.last_index = index
-
-                if self.add_cr:
-                    if sys.version_info < (3,):
-                        data = data.replace('\n', '\r\n')
-                    else:
-                        data = data.replace(b'\n', b'\r\n')
 
                 # if not self.raw:
                     # data = self.quote_raw(data)
@@ -229,13 +220,9 @@ class term:
                 for i in self.outputs:
                     i.outputData(dataDict)
 
-                os.write(sys.stdout.fileno(), data)
+                print(color + data + self.color.reset)
         except Exception as e:
-            sys.stdout.write(color)
-            sys.stdout.flush()
             traceback.print_exc()
-            sys.stdout.write(self.color.reset)
-            sys.stdout.flush()
             os._exit(1)
 
     def run(self):
@@ -245,9 +232,6 @@ class term:
         # Go
         self.start()
         self.join()
-
-        # Cleanup
-        sys.stdout.write(self.color.reset + "\n")
 
 if __name__ == "__main__":
     import argparse
@@ -290,6 +274,6 @@ if __name__ == "__main__":
                color=(os.name == "posix" and not args.mono),
                bufsize=args.bufsize)
     if not args.quiet:
-        app.print_header(sensorNames, sys.stderr)
+        app.print_header(sensorNames)
 
     app.run()
