@@ -107,7 +107,7 @@ def load_plugins(config, type):
         except Exception as e:  # Add specific exception for missing module
             print("Error: Did not import %s plugin %s" % (type.__name__, i))
             raise e
-        return plugins
+        return plugins, names
 
 
 class termColor(object):
@@ -139,6 +139,7 @@ class term:
 
     def __init__(self,
                  sensors,
+                 outputs,
                  add_cr=False,
                  raw=True,
                  color=True,
@@ -150,6 +151,7 @@ class term:
             self.color.setup(len(sensors))
 
         self.sensors = sensors
+        self.outptus = outputs
         self.last_color = ""
         # The last index for which we were outputting (kept around to
         # track when we should make a note of it changing, as with
@@ -224,7 +226,7 @@ class term:
                 dataDict = {}
                 dataDict["value"] = data
                 dataDict["sensorName"] = sensor.sensorName
-                for i in outputPlugins:
+                for i in self.outputs:
                     i.outputData(dataDict)
 
                 os.write(sys.stdout.fileno(), data)
@@ -277,12 +279,14 @@ if __name__ == "__main__":
         print("Unable to access config file: settings.cfg")
 
     # Load sensor plugins
-    sensorPlugins = load_plugins("sensors.cfg", Sensor)
+    sensorPlugins, sensorNames = load_plugins("sensors.cfg", Sensor)
+    print(sensorPlugins)
 
     # Load output plugins
-    outputPlugins = load_plugins("outputs.cfg", Output)
+    outputPlugins, outputNames = load_plugins("outputs.cfg", Output)
 
     app = term(sensorPlugins,
+               outputPlugins,
                add_cr=args.crlf,
                color=(os.name == "posix" and not args.mono),
                bufsize=args.bufsize)
