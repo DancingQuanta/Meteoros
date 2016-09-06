@@ -1,8 +1,8 @@
-import output
+from . import Output
 import pifacereleyplus as relay
 
 
-class Relay(output.Output):
+class Relay(Output):
     requiredData = ["sensorNames", "threshold"]
     optionalData = []
 

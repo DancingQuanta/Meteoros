@@ -2,11 +2,11 @@ import sys
 import time
 import os
 import subprocess
-import output
-import usbbackup
+from . import Output
+import outputs.usbbackup
 
 
-class Logger(output.Output):
+class Logger(Output):
     usbData = ["usb"]
     remoteData = ["remotedir", "remoteuser", "remotehostname"]
     requiredData = ["localdir"]
