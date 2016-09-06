@@ -71,15 +71,7 @@ class term:
         self.add_cr = add_cr
         self.raw = raw
         self.bufsize = bufsize
-        # self.logfiledir & self.log are either None and a do-nothing
-        # function, or they are the open log file and a function which
-        # writes data to the log:
-        # if logfiledir:
-            # self.logfiledir = logfiledir
-        # else:
-            # self.logfiledir = None
         self.quote_re = None
-
 
     def print_header(self, nodes, output=sys.stdout):
         for (n, (node,)) in enumerate(zip(nodes)):
