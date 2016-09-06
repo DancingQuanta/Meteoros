@@ -92,7 +92,7 @@ class Logger(output.Output):
 
         # Backup
         usbStatus = False
-        if self.rd is None and self.raddr is None:
+        if self.rd is not None and self.raddr is not None:
             remoteStatus = self.remoteBackup(self.ld, self.rd, self.raddr)
         else:
             remoteStatus = False
