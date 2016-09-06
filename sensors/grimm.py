@@ -1,10 +1,10 @@
-import sensor
+from . import Sensor
 from mySerial import mySerial
 import serial
 import sys
 
 
-class Grimm(sensor.Sensor):
+class Grimm(Sensor):
     """
     The data outputted by Grimm is complex
     """

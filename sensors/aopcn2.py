@@ -1,11 +1,11 @@
-import sensor
+from . import Sensor
 import time
 from datetime import datetime
 import usbiss
 import opc
 
 
-class AlphasenseOPC(sensor.Sensor):
+class AlphasenseOPC(Sensor):
     """Alphasense Optical Particle Counter
     """
     requiredData = ["port", "sensorName", "delay"]

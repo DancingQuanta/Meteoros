@@ -1,12 +1,12 @@
 
-import sensor
+from . import Sensor
 from mySerial import mySerial
 import serial
 import datetime as dt
 import sys
 
 
-class Dylos(sensor.Sensor):
+class Dylos(Sensor):
     requiredData = ["port", "sensorName"]
     optionalData = ["bufsize", "timeout"]
 

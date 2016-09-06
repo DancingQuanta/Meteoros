@@ -1,8 +1,8 @@
-import sensor
+from . import Sensor
 import time
 
 
-class Dummy(sensor.Sensor):
+class Dummy(Sensor):
     """Timer sensor class for testing the program
     """
     requiredData = ["sensorName", "delay"]
