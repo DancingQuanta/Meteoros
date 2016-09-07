@@ -84,6 +84,7 @@ class Logger(Output):
         sensorName = dataPoints["sensorName"]
         datetime = time.strftime("%Y-%m-%d-%H", time.localtime())
         filename = datetime + "-" + sensorName
+        wild = "*" + sensorName
         dir = self.ld
         logfile = os.path.join(dir, filename)
         with open(logfile, 'a') as f:  # Open log file
@@ -103,6 +104,7 @@ class Logger(Output):
         if usbStatus or remoteStatus:
             if self.lastdatetime != datetime:
                 print("New hour")
-                cmd = "find %s ! -name '%s' -type f -exec rm -f {} +" % (dir, filename)
+                cmd = ("find %s -type f -and ! -name '%s' -and -name '%s' "
+                       "-exec rm -f {} +") % (dir, filename, wild)
                 p = subprocess.Popen(cmd, shell=True).wait()
                 self.lastdatetime = datetime
