@@ -3,7 +3,7 @@ import time
 import os
 import subprocess
 from . import Output
-import outputs.usbbackup
+from . import usbbackup
 
 
 class Logger(Output):
