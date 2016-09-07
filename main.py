@@ -172,21 +172,6 @@ class term:
             output.write("----------\n")
         output.flush()
 
-    def start(self):
-        self.alive = True
-
-        # sensor data->console, all devices
-        for (n, sensor) in enumerate(self.sensors):
-            self.threads.append(threading.Thread(
-                target=self.reader,
-                args=(sensor, self.color.code(n), n)
-                ))
-
-        # start all threads
-        for thread in self.threads:
-            thread.daemon = True
-            thread.start()
-
     def stop(self):
         self.alive = False
 
@@ -242,9 +227,7 @@ class term:
         # Handle SIGINT gracefully
         signal.signal(signal.SIGINT, lambda *args: self.stop())
 
-        # Go
-        self.start()
-        self.join()
+        self.reader(sensor, self.color.code(n), n))
 
         # Cleanup
         sys.stdout.write(self.color.reset + "\n")
