@@ -61,7 +61,7 @@ class AlphasenseOPC(Sensor):
                     data['Bin5 MToF'], data['Bin7 MToF'],
                     data['Sampling Period'], data['Temperature'],
                     data['Pressure'], data['PM1'], data['PM2.5'],
-                    data['PM10']]
+                    data['PM10'], data['SFR']]
 
             data = ','.join(str(e) for e in line) + '\n'
             return data
